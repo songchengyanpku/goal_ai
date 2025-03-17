@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="64" cy="64" r="60" fill="#5856D6"/>
+  
+  <!-- 目标图形 - 同心圆和箭头 -->
+  <circle cx="64" cy="64" r="40" stroke="white" stroke-width="6" stroke-opacity="0.9"/>
+  <circle cx="64" cy="64" r="24" stroke="white" stroke-width="6" stroke-opacity="0.7"/>
+  
+  <!-- 中心点 -->
+  <circle cx="64" cy="64" r="8" fill="white"/>
+  
+  <!-- 上升箭头 -->
+  <path d="M64 20L76 36H52L64 20Z" fill="white"/>
+  
+  <!-- 进度指示 -->
+  <path d="M64 64L96 96" stroke="white" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="96" cy="96" r="6" fill="white"/>
+</svg> 

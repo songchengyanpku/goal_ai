@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>目标进展提取器</title>
+  <style>
+    :root {
+      --primary-color: #007AFF;
+      --accent-color: #5856D6;
+      --background-color: #F5F5F7;
+      --card-background: #FFFFFF;
+      --text-primary: #1D1D1F;
+      --text-secondary: #6E6E73;
+      --border-radius: 12px;
+      --spacing: 16px;
+    }
+
+    body {
+      width: 480px;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      background: var(--background-color);
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 600px;
+    }
+
+    /* 标签页样式 */
+    .tabs {
+      display: flex;
+      background: var(--card-background);
+      padding: 8px;
+      gap: 8px;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .tab.active {
+      background: var(--accent-color);
+      color: white;
+    }
+
+    .tab:not(.active):hover {
+      background: rgba(0,0,0,0.05);
+    }
+
+    /* 图标样式 */
+    .icon {
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* 内容区域 */
+    .tab-content {
+      display: none;
+      padding: var(--spacing);
+      flex: 1;
+    }
+
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    /* 操作按钮 */
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: var(--spacing);
+    }
+
+    .action-button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .action-button.primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .action-button.primary:hover {
+      background: #0071E3;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0,122,255,0.2);
+    }
+
+    .action-button.secondary {
+      background: rgba(0,122,255,0.1);
+      color: var(--primary-color);
+    }
+
+    .action-button.secondary:hover {
+      background: rgba(0,122,255,0.15);
+    }
+
+    .action-button:active {
+      transform: translateY(0);
+    }
+
+    .action-button:disabled {
+      background: #A1A1A6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* 卡片样式 */
+    .card {
+      background: var(--card-background);
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-header {
+      padding: var(--spacing);
+      border-bottom: 1px solid #E5E5EA;
+      display: flex;
+      align-items: center;
+      background: rgba(0,0,0,0.02);
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 15px;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .card-content {
+      padding: var(--spacing);
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* 自定义滚动条 */
+    .card-content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .card-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .card-content::-webkit-scrollbar-thumb {
+      background: #A1A1A6;
+      border-radius: 4px;
+    }
+
+    .card-content::-webkit-scrollbar-thumb:hover {
+      background: #86868B;
+    }
+
+    /* 动画 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    .loading {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .copy-success {
+      animation: fadeIn 0.3s ease-out;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="tabs">
+      <button class="tab active" data-tab="extract">
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </span>
+        目标进展
+      </button>
+      <button class="tab" data-tab="summary">
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+          </svg>
+        </span>
+        AI总结
+      </button>
+    </div>
+
+    <div class="tab-content active" id="extract-content">
+      <div class="button-group">
+        <button class="action-button primary" id="extract">
+          <span class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+          </span>
+          提取进展
+        </button>
+        <button class="action-button secondary" id="copy">
+          <span class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+            </svg>
+          </span>
+          复制内容
+        </button>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>进展内容</h2>
+        </div>
+        <div class="card-content" id="result"></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="summary-content">
+      <div class="button-group">
+        <button class="action-button primary" id="summarize" disabled>
+          <span class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+          </span>
+          开始总结
+        </button>
+        <button class="action-button secondary" id="copySummary">
+          <span class="icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+            </svg>
+          </span>
+          复制总结
+        </button>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h2>总结内容</h2>
+        </div>
+        <div class="card-content" id="summaryContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/popup.js"></script>
+</body>
+</html> 
