@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "目标进展智能总结",
-  "version": "2.0",
+  "version": "2.1",
   "description": "提取目标管理系统中的进展信息，并智能总结",
   "icons": {
     "16": "icons/icon16.png",
@@ -33,4 +33,4 @@
       "js": ["js/content.js"]
     }
   ]
-} 
+}

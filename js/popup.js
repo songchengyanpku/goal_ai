@@ -1,25 +1,36 @@
 let extractedContent = ''; // 存储提取的内容
 let summaryContent = ''; // 存储总结内容
 
-// 标签页切换逻辑
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    const targetId = tab.getAttribute('data-tab');
-    
-    // 更新标签状态
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    
-    // 更新内容区域
-    document.querySelectorAll('.tab-content').forEach(content => {
-      content.classList.remove('active');
-      content.style.display = 'none';
-    });
-    const targetContent = document.getElementById(`${targetId}-content`);
-    targetContent.classList.add('active');
-    targetContent.style.display = 'flex';
-  });
+// 初始化按钮状态
+document.addEventListener('DOMContentLoaded', () => {
+  const copyBtn = document.getElementById('copy');
+  const summarizeBtn = document.getElementById('summarize');
+  copyBtn.disabled = true;
+  summarizeBtn.disabled = true;
 });
+
+
+// 显示AI总结弹窗
+function showSummaryModal() {
+  const modal = document.getElementById('summaryModal');
+  const overlay = document.getElementById('summaryOverlay');
+  modal.classList.add('active');
+  overlay.classList.add('active');
+}
+
+// 隐藏AI总结弹窗
+function hideSummaryModal() {
+  const modal = document.getElementById('summaryModal');
+  const overlay = document.getElementById('summaryOverlay');
+  modal.classList.remove('active');
+  overlay.classList.remove('active');
+}
+
+// 关闭弹窗按钮事件
+document.getElementById('closeSummary').addEventListener('click', hideSummaryModal);
+
+// 点击遮罩层关闭弹窗
+document.getElementById('summaryOverlay').addEventListener('click', hideSummaryModal);
 
 // 添加加载状态的辅助函数
 function setLoading(element, isLoading) {
@@ -43,14 +54,93 @@ function showCopySuccess(button, originalText) {
   }, 1500);
 }
 
-document.getElementById('extract').addEventListener('click', async () => {
+// 显示进展选择对话框
+async function showProgressSelection() {
+  const progressSelection = document.getElementById('progressSelection');
+  const progressOverlay = document.getElementById('progressOverlay');
+  const progressList = document.getElementById('progressList');
+  const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+  
+  try {
+    // 获取所有进展项
+    const response = await chrome.tabs.sendMessage(tab.id, {action: 'getProgressList'});
+    
+    if (response.success) {
+      // 清空并填充复选框列表
+      progressList.innerHTML = response.data.map((item, index) => `
+        <div class="checkbox-item">
+          <input type="checkbox" id="progress-${index}" value="${index}" checked>
+          <label for="progress-${index}">进展 #${index + 1}</label>
+        </div>
+      `).join('');
+      
+      // 显示对话框和遮罩层
+      progressSelection.classList.add('active');
+      progressOverlay.classList.add('active');
+    } else {
+      throw new Error(response.error);
+    }
+  } catch (error) {
+    // 显示错误提示模态框
+    const errorModal = document.getElementById('errorModal');
+    const errorOverlay = document.getElementById('errorOverlay');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    errorMessage.textContent = '获取进展列表失败: ' + error.message;
+    errorModal.classList.add('active');
+    errorOverlay.classList.add('active');
+    
+    // 绑定确定按钮事件
+    const errorConfirm = document.getElementById('errorConfirm');
+    const hideErrorModal = () => {
+      errorModal.classList.remove('active');
+      errorOverlay.classList.remove('active');
+      errorConfirm.removeEventListener('click', hideErrorModal);
+      errorOverlay.removeEventListener('click', hideErrorModal);
+    };
+    
+    errorConfirm.addEventListener('click', hideErrorModal);
+    errorOverlay.addEventListener('click', hideErrorModal);
+  }
+}
+
+// 处理进展选择
+// 隐藏进展选择对话框
+function hideProgressSelection() {
+  const progressSelection = document.getElementById('progressSelection');
+  const progressOverlay = document.getElementById('progressOverlay');
+  progressSelection.classList.remove('active');
+  progressOverlay.classList.remove('active');
+}
+
+// 取消选择
+document.getElementById('cancelSelection').addEventListener('click', hideProgressSelection);
+
+// 点击遮罩层关闭进展选择对话框
+document.getElementById('progressOverlay').addEventListener('click', hideProgressSelection);
+
+// 显示选择弹窗
+document.getElementById('extract').addEventListener('click', () => {
+  showProgressSelection();
+});
+
+// 确认选择
+document.getElementById('confirmSelection').addEventListener('click', async () => {
   const extractBtn = document.getElementById('extract');
   const resultDiv = document.getElementById('result');
   const summarizeBtn = document.getElementById('summarize');
-  const summaryDiv = document.getElementById('summary');
-  const summaryContentDiv = document.getElementById('summaryContent');
+  const progressSelection = document.getElementById('progressSelection');
   
   try {
+    // 获取选中的进展索引
+    const selectedIndices = Array.from(document.querySelectorAll('#progressList input[type="checkbox"]:checked'))
+      .map(checkbox => parseInt(checkbox.value));
+    
+    if (selectedIndices.length === 0) {
+      alert('请至少选择一个进展项');
+      return;
+    }
+    
     setLoading(extractBtn, true);
     extractBtn.innerHTML = `
       <span class="icon loading">
@@ -61,11 +151,17 @@ document.getElementById('extract').addEventListener('click', async () => {
       正在提取...
     `;
     
+    // 隐藏选择对话框和遮罩层
+    hideProgressSelection();
+    
     // 获取当前标签页
     const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
     
-    // 发送消息给content script
-    const response = await chrome.tabs.sendMessage(tab.id, {action: 'extractProgress'});
+    // 发送消息给content script，包含选中的索引
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      action: 'extractProgress',
+      selectedIndices: selectedIndices
+    });
     
     if (response.success) {
       // 格式化内容
@@ -84,12 +180,16 @@ document.getElementById('extract').addEventListener('click', async () => {
         })
         .join('');
       
-      // 启用AI总结按钮
+      // 启用复制和AI总结按钮
+      const copyBtn = document.getElementById('copy');
+      copyBtn.disabled = false;
       summarizeBtn.disabled = false;
       summaryContent = '';
     } else {
       resultDiv.innerHTML = `<div style="color: #FF3B30; padding: 16px;">提取失败: ${response.error}</div>`;
       extractedContent = '';
+      const copyBtn = document.getElementById('copy');
+      copyBtn.disabled = true;
       summarizeBtn.disabled = true;
       summaryContent = '';
     }
@@ -150,7 +250,6 @@ document.getElementById('summarize').addEventListener('click', async () => {
   }
   
   const summarizeBtn = document.getElementById('summarize');
-  const summaryDiv = document.getElementById('summary');
   const summaryContentDiv = document.getElementById('summaryContent');
   
   try {
@@ -164,6 +263,7 @@ document.getElementById('summarize').addEventListener('click', async () => {
       正在总结...
     `;
     summaryContentDiv.innerHTML = '<div class="loading" style="padding: 16px;">正在生成总结，请稍候...</div>';
+    showSummaryModal();
     
     // 调用API
     summaryContent = await callGLM4API(extractedContent);
@@ -181,10 +281,10 @@ document.getElementById('summarize').addEventListener('click', async () => {
     summarizeBtn.innerHTML = `
       <span class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
         </svg>
       </span>
-      开始总结
+      AI总结
     `;
   }
 });
@@ -218,4 +318,4 @@ document.getElementById('copySummary').addEventListener('click', async () => {
   } catch (error) {
     alert('复制失败: ' + error.message);
   }
-}); 
+});

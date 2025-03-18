@@ -1,7 +1,10 @@
 // 监听来自popup的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'extractProgress') {
+  if (request.action === 'getProgressList') {
     const progress = extractProgressInfo();
+    sendResponse(progress);
+  } else if (request.action === 'extractProgress') {
+    const progress = extractProgressInfo(request.selectedIndices);
     sendResponse(progress);
   }
   return true;
@@ -42,7 +45,7 @@ function processParagraphContent(p) {
 }
 
 // 提取进展信息
-function extractProgressInfo() {
+function extractProgressInfo(selectedIndices) {
   const results = [];
   
   try {
@@ -50,13 +53,18 @@ function extractProgressInfo() {
     const container = document.querySelector('#app > div > div > div > div.manifest-wrapper > div.manifest-wrapper-content.wrapper-visible > div > div.mtd-loading-nested.manifest-body-loading-wrapper > div > div > div.list-body > div.associate-goal-slide.associate-goal-slide-visible');
     
     if (!container) {
-      throw new Error('未找到子目标进展区域');
+      throw new Error('请打开子目标进展区域');
     }
 
     // 获取所有ProseMirror编辑器内容
     const progressItems = container.querySelectorAll('.ProseMirror');
     
     progressItems.forEach((item, index) => {
+      // 如果提供了选择的索引，则只处理选中的进展
+      if (selectedIndices && !selectedIndices.includes(index)) {
+        return;
+      }
+      
       // 获取所有段落内容
       const paragraphs = Array.from(item.querySelectorAll('p'))
         .map(p => processParagraphContent(p))
@@ -78,4 +86,4 @@ function extractProgressInfo() {
       error: error.message
     };
   }
-} 
+}
