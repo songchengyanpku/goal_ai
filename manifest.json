@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "目标管理小帮手",
+  "version": "2.5",
+  "description": "一键提取目标管理系统项目进展，并智能总结",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "clipboardWrite",
+    "storage",
+    "sidePanel"
+  ],
+  "background": {
+    "service_worker": "js/background.js"
+  },
+  "host_permissions": [
+    "https://goal.sankuai.com/*",
+    "https://aigc.sankuai.com/*"
+  ],
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://goal.sankuai.com/*"],
+      "js": ["js/content.js"]
+    }
+  ]
+} 

@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>目标管理小帮手</title>
+  <style>
+    :root {
+      --primary-color: #007AFF;
+      --accent-color: #5856D6;
+      --background-color: #F5F5F7;
+      --card-background: #FFFFFF;
+      --text-primary: #1D1D1F;
+      --text-secondary: #6E6E73;
+      --border-radius: 12px;
+      --spacing: 16px;
+    }
+
+    body {
+      width: 100%;
+      height: 100vh;
+      min-width: 320px;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      background: var(--background-color);
+      color: var(--text-primary);
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    /* 重置按钮默认样式，防止弹跳动画 */
+    button {
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    button:hover {
+      transform: none !important;
+    }
+
+    button:active {
+      transform: none !important;
+    }
+
+    /* 特别针对复制按钮的重置 */
+    #copy, #copySummary {
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    #copy:hover, #copySummary:hover {
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    #copy:active, #copySummary:active {
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      min-height: 100vh;
+    }
+
+    /* 标签页样式 */
+    .tabs {
+      display: flex;
+      background: var(--card-background);
+      padding: 6px;
+      gap: 4px;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px 8px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: transparent;
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .tab span:not(.icon) {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tab.active {
+      background: var(--accent-color);
+      color: white;
+    }
+
+    .tab:not(.active):hover {
+      background: rgba(0,0,0,0.05);
+    }
+
+    /* 图标样式 */
+    .icon {
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* 内容区域 */
+    .tab-content {
+      display: none;
+      padding: 12px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    /* 操作按钮 */
+    .button-group {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .action-button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .action-button .icon {
+      flex-shrink: 0;
+    }
+
+    .action-button.primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .action-button.primary:hover {
+      background: #0071E3;
+    }
+
+    .action-button.secondary {
+      background: rgba(0,122,255,0.1);
+      color: var(--primary-color);
+    }
+
+    .action-button.secondary:hover {
+      background: rgba(0,122,255,0.15);
+    }
+
+    .action-button:active {
+      transform: none;
+    }
+
+    .action-button:disabled {
+      background: #A1A1A6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* 卡片样式 */
+    .card {
+      background: var(--card-background);
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-header {
+      padding: 12px;
+      border-bottom: 1px solid #E5E5EA;
+      display: flex;
+      align-items: center;
+      background: rgba(0,0,0,0.02);
+      flex-shrink: 0;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 14px;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .card-content {
+      padding: 12px;
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      font-size: 12px;
+      line-height: 1.5;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    /* 自定义滚动条 */
+    .card-content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .card-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .card-content::-webkit-scrollbar-thumb {
+      background: #A1A1A6;
+      border-radius: 4px;
+    }
+
+    .card-content::-webkit-scrollbar-thumb:hover {
+      background: #86868B;
+    }
+
+    /* 动画 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    .loading {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .copy-success {
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* AI总结加载动画 */
+    @keyframes typing {
+      0% { width: 0; }
+      100% { width: 100%; }
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+
+    .ai-loading {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .ai-loading-icon {
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(0, 122, 255, 0.2);
+      border-top: 3px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .ai-loading-text {
+      position: relative;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .ai-loading-text::after {
+      content: '';
+      animation: dots 2s steps(4, end) infinite;
+    }
+
+    /* 渐变背景动画 */
+    @keyframes shimmer {
+      0% { background-position: -200px 0; }
+      100% { background-position: calc(200px + 100%) 0; }
+    }
+
+    .ai-loading-shimmer {
+      background: linear-gradient(90deg, transparent, rgba(0, 122, 255, 0.1), transparent);
+      background-size: 200px 100%;
+      animation: shimmer 2s infinite;
+    }
+
+    /* 弹窗样式 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal {
+      background: var(--card-background);
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 90%;
+      max-height: 80%;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      animation: modalSlideIn 0.3s ease-out;
+    }
+
+    @keyframes modalSlideIn {
+      from { opacity: 0; transform: scale(0.9) translateY(-20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #E5E5EA;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+    }
+
+    .modal-close:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+    }
+
+    .progress-item {
+      display: flex;
+      align-items: flex-start;
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      border: 1px solid #E5E5EA;
+      transition: background-color 0.2s;
+    }
+
+    .progress-item:hover {
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    .progress-checkbox {
+      margin-right: 10px;
+      margin-top: 2px;
+    }
+
+    .progress-content {
+      flex: 1;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--text-primary);
+    }
+
+    .progress-index {
+      font-weight: 600;
+      color: var(--primary-color);
+      margin-bottom: 4px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .modal-button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .modal-button.primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .modal-button.primary:hover {
+      background: #0071E3;
+    }
+
+    .modal-button.secondary {
+      background: #F2F2F7;
+      color: var(--text-primary);
+    }
+
+    .modal-button.secondary:hover {
+      background: #E5E5EA;
+    }
+
+    /* 圆形提取按钮 */
+    .circular-extract-btn {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #007AFF 0%, #5856D6 50%, #AF52DE 100%);
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
+      box-shadow:
+        0 8px 32px rgba(0, 122, 255, 0.25),
+        0 4px 16px rgba(88, 86, 214, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .circular-extract-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .circular-extract-btn:hover {
+      transform: translateY(-3px) scale(1.08);
+      box-shadow:
+        0 12px 40px rgba(0, 122, 255, 0.35),
+        0 6px 20px rgba(88, 86, 214, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      filter: brightness(1.1);
+    }
+
+    .circular-extract-btn:active {
+      transform: translateY(-1px) scale(1.02);
+      box-shadow:
+        0 6px 24px rgba(0, 122, 255, 0.3),
+        0 3px 12px rgba(88, 86, 214, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .circular-extract-btn svg {
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+    }
+
+    /* 脉冲动画 */
+    @keyframes pulse-ring {
+      0% {
+        transform: scale(0.8);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1.2);
+        opacity: 0;
+      }
+    }
+
+    .circular-extract-btn::after {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      border: 2px solid rgba(0, 122, 255, 0.3);
+      border-radius: 50%;
+      animation: pulse-ring 2s ease-out infinite;
+      pointer-events: none;
+    }
+
+    /* 背景渐变动画 */
+    @keyframes gradient-shift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .circular-extract-btn {
+      background-size: 200% 200%;
+      animation: gradient-shift 4s ease infinite;
+    }
+
+    /* 状态栏样式 */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: rgba(0,0,0,0.02);
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #A1A1A6;
+      transition: background-color 0.2s;
+    }
+
+    .status-dot.success {
+      background: #34C759;
+    }
+
+    .status-dot.warning {
+      background: #FF9500;
+    }
+
+    .status-dot.error {
+      background: #FF3B30;
+    }
+
+    /* 底部卡片区域 */
+    .bottom-cards {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .info-card {
+      flex: 1;
+      background: var(--card-background);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .info-card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .card-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .card-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .card-desc {
+      font-size: 10px;
+      color: var(--text-secondary);
+      line-height: 1.3;
+    }
+
+    /* 顶部标题栏样式 */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: var(--card-background);
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .app-icon {
+      font-size: 20px;
+    }
+
+    .app-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      padding: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: background-color 0.2s ease, color 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .settings-btn:hover {
+      background: rgba(0,0,0,0.05);
+      color: var(--text-primary);
+    }
+
+    .settings-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- 主要内容区域 -->
+    <div class="main-content" style="padding: 12px; flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+      <!-- 初始状态：只显示提取按钮和提示语 -->
+      <div id="initialState" style="display: flex; flex-direction: column; flex: 1;">
+        <!-- 顶部状态栏 -->
+        <div class="status-bar">
+          <div style="display: flex; gap: 16px;">
+            <div class="status-item">
+              <span class="status-dot" id="websiteStatus"></span>
+              <span class="status-text" id="websiteStatusText">检测网站中...</span>
+            </div>
+            <div class="status-item">
+              <span class="status-dot" id="apiStatus"></span>
+              <span class="status-text" id="apiStatusText">检查配置中...</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 4px;">
+            <button class="settings-btn" id="helpBtn" title="帮助文档">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14,2 14,8 20,8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10,9 9,9 8,9"></polyline>
+              </svg>
+            </button>
+            <button class="settings-btn" id="settingsBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 中央主要区域 -->
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; text-align: center; padding: 20px;">
+          <!-- 欢迎信息 -->
+          <div style="margin-bottom: 24px;">
+            <h1 style="font-size: 20px; color: var(--text-primary); margin: 0 0 8px 0; font-weight: 600;">目标管理小帮手</h1>
+            <p style="font-size: 14px; color: var(--text-secondary); margin: 0; line-height: 1.4;">一键提取目标进展，AI智能总结，提升工作效率</p>
+          </div>
+
+          <!-- 主要操作按钮 -->
+          <div style="margin-bottom: 32px;">
+            <button id="extract" class="circular-extract-btn">
+              <span style="display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 1024 1024" fill="currentColor" style="width: 28px; height: 28px;">
+                  <!-- 提取箭头 -->
+                  <path d="M954.538667 440.917333L811.392 339.2c-6.4-3.2-12.714667 0-12.714667 9.514667v50.901333h-164.096a13.653333 13.653333 0 0 0-12.714666 12.714667v76.373333c0 6.357333 6.4 12.714667 12.714666 12.714667h164.096v54.058666c0 9.557333 6.357333 12.714667 12.714667 9.557334l143.146667-104.96c6.357333-3.2 6.357333-12.757333 0-19.114667z"/>
+                  <!-- 文档 -->
+                  <path d="M784.768 806.613333h-234.197333V241.706667c0-35.114667-29.269333-73.173333-64.384-81.92L290.133333 107.008h494.677334v169.813333h64.384v-169.813333c0-35.114667-29.269333-64.384-64.426667-64.384H129.152c-35.114667 0-64.426667 29.269333-64.426667 64.426667v699.52c0 23.424 11.733333 43.904 29.312 55.594666 8.746667 8.789333 23.381333 17.578667 35.114667 20.48l354.133333 96.64c35.157333 8.746667 64.426667-11.733333 64.426667-46.848v-58.538666h234.154667c35.114667 0 64.426667-29.269333 64.426666-64.426667v-172.672h-61.482666v169.770667z"/>
+                </svg>
+              </span>
+            </button>
+            <p style="font-size: 12px; color: var(--text-secondary); margin: 12px 0 0 0;">点击开始提取进展</p>
+          </div>
+
+          <!-- 功能特性卡片 -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 280px; margin-bottom: 20px;">
+            <div style="background: linear-gradient(135deg, rgba(0, 122, 255, 0.1) 0%, rgba(88, 86, 214, 0.1) 100%); border-radius: 12px; padding: 16px; text-align: center;">
+              <div style="font-size: 24px; margin-bottom: 8px;">🎯</div>
+              <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">智能提取</div>
+              <div style="font-size: 10px; color: var(--text-secondary); line-height: 1.3;">自动识别目标进展内容</div>
+            </div>
+            <div style="background: linear-gradient(135deg, rgba(255, 149, 0, 0.1) 0%, rgba(255, 59, 48, 0.1) 100%); border-radius: 12px; padding: 16px; text-align: center;">
+              <div style="font-size: 24px; margin-bottom: 8px;">🤖</div>
+              <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">AI总结</div>
+              <div style="font-size: 10px; color: var(--text-secondary); line-height: 1.3;">智能生成结构化总结</div>
+            </div>
+            <div style="background: linear-gradient(135deg, rgba(52, 199, 89, 0.1) 0%, rgba(48, 209, 88, 0.1) 100%); border-radius: 12px; padding: 16px; text-align: center;">
+              <div style="font-size: 24px; margin-bottom: 8px;">⚡</div>
+              <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">高效便捷</div>
+              <div style="font-size: 10px; color: var(--text-secondary); line-height: 1.3;">一键复制，快速分享</div>
+            </div>
+            <div style="background: linear-gradient(135deg, rgba(175, 82, 222, 0.1) 0%, rgba(88, 86, 214, 0.1) 100%); border-radius: 12px; padding: 16px; text-align: center;">
+              <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
+              <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">数据统计</div>
+              <div style="font-size: 10px; color: var(--text-secondary); line-height: 1.3;">记录使用次数和频率</div>
+            </div>
+          </div>
+
+          <!-- 使用指南 -->
+          <div style="width: 100%; max-width: 300px; margin-bottom: 16px;">
+            <div style="background: rgba(0, 0, 0, 0.02); border-radius: 12px; padding: 16px; border: 1px solid rgba(0, 0, 0, 0.05);">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                <div style="font-size: 16px;">📋</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--text-primary);">使用步骤</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--primary-color); color: white; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">1</div>
+                  <div style="font-size: 11px; color: var(--text-secondary);">打开目标管理-子目标进展页面</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--primary-color); color: white; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</div>
+                  <div style="font-size: 11px; color: var(--text-secondary);">点击提取按钮开始提取</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--primary-color); color: white; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">3</div>
+                  <div style="font-size: 11px; color: var(--text-secondary);">选择需要的进展内容</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--primary-color); color: white; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">4</div>
+                  <div style="font-size: 11px; color: var(--text-secondary);">使用AI总结功能优化内容</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部功能卡片 -->
+        <div class="bottom-cards" style="margin-top: auto; padding: 0 20px 20px 20px;">
+          <div class="info-card">
+            <div class="card-icon">📅</div>
+            <div class="card-text">
+              <div class="card-title">今日使用</div>
+              <div class="card-desc" id="usageCount">0 次提取</div>
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="card-icon">📊</div>
+            <div class="card-text">
+              <div class="card-title">本月使用</div>
+              <div class="card-desc" id="monthlyUsageCount">0 次提取</div>
+            </div>
+          </div>
+          <div class="info-card">
+            <div class="card-icon">🏆</div>
+            <div class="card-text">
+              <div class="card-title">累计使用</div>
+              <div class="card-desc" id="totalUsageCount">0 次提取</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 提取后显示的内容区域 -->
+       <div id="contentArea" style="display: none; flex-direction: column; gap: 12px; flex: 1; min-height: 0;">
+        <div class="card" id="progressCard" style="flex: 1; min-height: 0;">
+          <div class="card-header">
+            <h2>进展内容</h2>
+            <div style="margin-left: auto; display: flex; gap: 8px;">
+              <button id="reExtract" style="background: rgba(255, 149, 0, 0.1); border: none; color: #FF9500; font-size: 11px; cursor: pointer; padding: 6px 12px; border-radius: 8px; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: background-color 0.2s ease; min-width: 80px; height: 28px; justify-content: center;">
+                <span style="width: 12px; height: 12px; display: flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 10px; height: 10px;">
+                    <path d="M1 4v6h6"/>
+                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                  </svg>
+                </span>
+                重新提取
+              </button>
+              <button id="copy" style="background: rgba(0, 122, 255, 0.1); border: none; color: var(--primary-color); font-size: 11px; cursor: pointer; padding: 6px 12px; border-radius: 8px; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: background-color 0.2s ease; width: 88px; height: 28px; justify-content: center;">
+                <span style="width: 12px; height: 12px; display: flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 10px; height: 10px;">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="m5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </span>
+                复制内容
+              </button>
+              <button id="summarize" disabled style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; font-size: 11px; cursor: pointer; padding: 6px 12px; border-radius: 8px; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: background-color 0.2s ease; min-width: 80px; height: 28px; justify-content: center;">
+                <span style="width: 12px; height: 12px; display: flex; align-items: center; justify-content: center;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 10px; height: 10px;">
+                    <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </span>
+                AI总结
+              </button>
+            </div>
+          </div>
+          <div class="card-content" id="result" style="overflow-y: auto; flex: 1;"></div>
+        </div>
+
+        <!-- AI总结结果区域 -->
+        <div class="card" id="summaryCard" style="display: none; flex: 1; min-height: 0;">
+          <div class="card-header">
+            <h2>总结内容</h2>
+            <button id="copySummary" style="margin-left: auto; background: rgba(0, 122, 255, 0.1); border: none; color: var(--primary-color); font-size: 11px; cursor: pointer; padding: 6px 12px; border-radius: 8px; font-weight: 500; display: flex; align-items: center; gap: 4px; transition: background-color 0.2s ease; width: 88px; height: 28px; justify-content: center;">
+              <span style="width: 12px; height: 12px; display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 10px; height: 10px;">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="m5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </span>
+              复制内容
+            </button>
+          </div>
+          <div class="card-content" id="summaryContent" style="overflow-y: auto; flex: 1;"></div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <div class="tab-content" id="settings-content">
+      <div class="card">
+        <div class="card-header">
+          <h2>AppID设置</h2>
+          <button class="settings-btn" id="backBtn" title="关闭设置" style="margin-left: auto;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="card-content">
+          <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+            请输入你的AppID，可以从Friday首页（<a href="https://friday.sankuai.com/" target="_blank" style="color: var(--primary-color); text-decoration: none;">https://friday.sankuai.com/</a>），点击"个人用户"获取。
+          </p>
+          <div style="margin-bottom: 16px;">
+            <label for="appIdInput" style="display: block; font-weight: 500; font-size: 12px; margin-bottom: 6px;">AppID</label>
+            <input type="text" id="appIdInput" placeholder="请不要把自己的 AppID 告诉其他人哦～" style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #E5E5EA; font-size: 12px; box-sizing: border-box; font-family: monospace;">
+          </div>
+          <button class="action-button primary" id="saveAppId" style="width: 100%;">
+            保存
+          </button>
+          <p id="saveStatus" style="text-align: center; margin-top: 12px; font-size: 13px; color: var(--primary-color);"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 进展选择弹窗 -->
+  <div id="progressModal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">选择要提取的进展</h3>
+        <button class="modal-close" id="closeModal">&times;</button>
+      </div>
+      <div class="progress-list" id="progressList">
+        <!-- 进展项目将在这里动态生成 -->
+      </div>
+      <div class="modal-actions">
+        <button class="modal-button secondary" id="selectAll">全选</button>
+        <button class="modal-button secondary" id="selectNone">全不选</button>
+        <button class="modal-button primary" id="confirmExtract">确认提取</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/popup.js"></script>
+</body>
+</html> 
